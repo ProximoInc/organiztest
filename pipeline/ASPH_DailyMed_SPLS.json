@@ -1,0 +1,444 @@
+{
+	"name": "ASPH_DailyMed_SPLS",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetTotalPageInfo",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "EtlProcessId",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "@variables('Api_Url')",
+						"type": "Expression"
+					},
+					"method": "GET"
+				}
+			},
+			{
+				"name": "Take total page numbers",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetTotalPageInfo",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "TotalPages",
+					"value": {
+						"value": "@range(1,activity('GetTotalPageInfo').output.metadata.total_pages)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ForEachPage",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Take total page numbers",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@variables('TotalPages')",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "CopyToSql OK",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "GetURL",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[pr_PROXIMO_Put_EtlProcessLog]",
+								"storedProcedureParameters": {
+									"p_etl_process_id": {
+										"value": {
+											"value": "@variables('EtlProcessId')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"p_content": {
+										"value": {
+											"value": "@string(activity('GetURL').output)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"p_started": {
+										"value": {
+											"value": "@variables('Now')",
+											"type": "Expression"
+										},
+										"type": "Datetime"
+									},
+									"p_ended": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "Datetime"
+									},
+									"p_current_page": {
+										"value": {
+											"value": "@activity('GetURL').output.metadata.current_page",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"p_status": {
+										"value": "GET OK",
+										"type": "String"
+									},
+									"p_total_elements": {
+										"value": {
+											"value": "@activity('GetURL').output.metadata.total_elements",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"p_total_pages": {
+										"value": {
+											"value": "@activity('GetURL').output.metadata.total_pages",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ASPHdb",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "GetURL",
+							"type": "WebActivity",
+							"dependsOn": [
+								{
+									"activity": "Set variable1",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"url": {
+									"value": "@concat(variables('Api_Url'),'&page=',item())",
+									"type": "Expression"
+								},
+								"method": "GET"
+							}
+						},
+						{
+							"name": "CopyToSql KO",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "GetURL",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[pr_PROXIMO_Put_EtlProcessLog]",
+								"storedProcedureParameters": {
+									"p_etl_process_id": {
+										"value": {
+											"value": "@variables('EtlProcessId')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"p_content": {
+										"value": {
+											"value": "@string(activity('GetURL').output)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"p_started": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "Datetime"
+									},
+									"p_ended": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "Datetime"
+									},
+									"p_current_page": {
+										"value": {
+											"value": "@activity('GetURL').output.metadata.current_page",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"p_status": {
+										"value": "GET KO",
+										"type": "String"
+									},
+									"p_total_elements": {
+										"value": {
+											"value": "@activity('GetURL').output.metadata.total_elements",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"p_total_pages": {
+										"value": {
+											"value": "@activity('GetURL').output.metadata.total_pages",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ASPHdb",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Set variable1",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Now",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "GetApiUrl",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select dbo.fn_PROXIMO_Get_Dailymed_Spls_Api_Url () as api_url,\ncast((select top 1 id from [dbo].[tbl_PROXIMO_EtlProcess] where order_by = 1) as varchar(100)) as etl_process_id",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ASHP_Dataset",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Api_Url",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetApiUrl",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "Api_Url",
+					"value": {
+						"value": "@activity('GetApiUrl').output.firstRow.api_url",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "EtlProcessId",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Api_Url",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "EtlProcessId",
+					"value": {
+						"value": "@activity('GetApiUrl').output.firstRow.etl_process_id",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Update_tbl_PROXIMO_EtlProcess OK",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "ForEachPage",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[pr_PROXIMO_Post_EtlProcess]",
+					"storedProcedureParameters": {
+						"p_etl_process_id": {
+							"value": {
+								"value": "@variables('EtlProcessId')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"p_status": {
+							"value": "GET OK",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ASPHdb",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Update_tbl_PROXIMO_EtlProcess KO",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "ForEachPage",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[pr_PROXIMO_Post_EtlProcess]",
+					"storedProcedureParameters": {
+						"p_etl_process_id": {
+							"value": {
+								"value": "@variables('EtlProcessId')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"p_status": {
+							"value": "GET KO",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ASPHdb",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"variables": {
+			"Api_Url": {
+				"type": "String"
+			},
+			"EtlProcessId": {
+				"type": "String"
+			},
+			"TotalPages": {
+				"type": "Array"
+			},
+			"Now": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ASPH"
+		},
+		"annotations": [],
+		"lastPublishTime": "2021-05-13T13:41:32Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

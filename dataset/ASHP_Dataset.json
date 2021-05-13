@@ -1,0 +1,49 @@
+{
+	"name": "ASHP_Dataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ASPHdb",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "ASHP"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "name",
+				"type": "varchar"
+			},
+			{
+				"name": "last_execution_date",
+				"type": "date"
+			},
+			{
+				"name": "order_by",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "created",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "status",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "tbl_PROXIMO_EtlProcess"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
